@@ -1,0 +1,23 @@
+{
+  "name": "tactile-shockwave-halo",
+  "version": "1.0.0",
+  "description": "Tactile Shockwave Halo & Spring Pill micro-interaction inspired by @Kubai087 and Dia/Apple iOS.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "author": "hennysky",
+  "license": "MIT",
+  "keywords": [
+    "react",
+    "shockwave",
+    "micro-interaction",
+    "ai-agent",
+    "tactile",
+    "halo",
+    "design-system"
+  ],
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  }
+}

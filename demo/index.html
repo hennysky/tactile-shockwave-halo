@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tactile Shockwave Halo · 独立交互演示</title>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --text: #f0f3f8;
+      --card: rgba(22, 26, 34, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #halo-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+      mix-blend-mode: screen;
+    }
+    .container {
+      position: relative;
+      z-index: 20;
+      text-align: center;
+      max-width: 600px;
+      padding: 30px;
+      background: var(--card);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #9ba3b4;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    button {
+      padding: 10px 18px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+    button:active {
+      transform: scale(0.96);
+    }
+    .hint {
+      margin-top: 24px;
+      font-size: 11px;
+      color: #64748b;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="halo-canvas"></canvas>
+
+  <div class="container">
+    <h1>✨ 物理质感冲击波光晕 (Shockwave Halo)</h1>
+    <p>点击任意按钮或点击页面空白处，观察带有物理透镜衰减与色彩分离的光学扩散波。</p>
+
+    <div class="btn-group">
+      <button onclick="fireWave(event, 'aurora')">🌌 Aurora 极光 (蓝紫粉桃)</button>
+      <button onclick="fireWave(event, 'halo')">🌅 Halo 暖阳 (琥珀晨光)</button>
+      <button onclick="fireWave(event, 'frost')">🧊 Frost 冰霜 (薄荷青绿)</button>
+      <button onclick="fireWave(event, 'spark')">⚡ Spark 先锋 (电光紫金)</button>
+    </div>
+
+    <div class="hint">Click anywhere on screen to trigger at cursor position</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('halo-canvas');
+    const ctx = canvas.getContext('2d');
+    const PALETTES = {
+      aurora: ['rgb(80,140,255)', 'rgb(160,110,255)', 'rgb(255,110,180)', 'rgb(255,190,140)'],
+      halo: ['rgb(255,150,60)', 'rgb(255,190,70)', 'rgb(255,225,120)', 'rgb(255,245,210)'],
+      frost: ['rgb(80,220,175)', 'rgb(70,195,225)', 'rgb(180,240,150)', 'rgb(235,255,245)'],
+      spark: ['rgb(140,100,255)', 'rgb(200,130,255)', 'rgb(255,200,110)', 'rgb(255,235,170)']
+    };
+
+    let waves = [];
+    let animId = null;
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function fireWave(e, pal) {
+      if (e) e.stopPropagation();
+      const x = e ? e.clientX : window.innerWidth / 2;
+      const y = e ? e.clientY : window.innerHeight / 2;
+      const maxDist = Math.max(
+        Math.hypot(x, y),
+        Math.hypot(window.innerWidth - x, y),
+        Math.hypot(x, window.innerHeight - y),
+        Math.hypot(window.innerWidth - x, window.innerHeight - y)
+      );
+
+      waves.push({
+        x, y,
+        startTime: performance.now(),
+        duration: 1100,
+        maxRadius: maxDist + 200,
+        palette: PALETTES[pal] || PALETTES.aurora
+      });
+
+      if (!animId) render(performance.now());
+    }
+
+    window.addEventListener('click', (e) => {
+      fireWave(e, 'aurora');
+    });
+
+    function rgba(rgbStr, a) {
+      const m = rgbStr.match(/\d+,\s*\d+,\s*\d+/);
+      return m ? `rgba(${m[0]}, ${Math.max(0, Math.min(1, a)).toFixed(3)})` : rgbStr;
+    }
+
+    function render(now) {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      const active = [];
+
+      for (const w of waves) {
+        const elapsed = now - w.startTime;
+        if (elapsed >= w.duration) continue;
+        active.push(w);
+
+        const t = elapsed / w.duration;
+        const factor = (1 - Math.pow(2, -9 * t)) / (1 - Math.pow(2, -9));
+        const r = 30 + (w.maxRadius - 30) * factor;
+        const strength = Math.min(1, t / 0.03) * (1 - Math.pow(t, 2.2));
+
+        const grad = ctx.createRadialGradient(w.x, w.y, Math.max(0, r - 70), w.x, w.y, r + 70);
+        grad.addColorStop(0, 'transparent');
+        grad.addColorStop(0.2, rgba(w.palette[0], strength * 0.45));
+        grad.addColorStop(0.5, rgba(w.palette[1], strength * 0.75));
+        grad.addColorStop(0.7, rgba(w.palette[2], strength * 0.8));
+        grad.addColorStop(0.9, rgba(w.palette[3], strength * 0.4));
+        grad.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, r + 70, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      waves = active;
+      if (waves.length > 0) {
+        animId = requestAnimationFrame(render);
+      } else {
+        animId = null;
+      }
+    }
+  </script>
+</body>
+</html>
